@@ -22,12 +22,12 @@ from sklearn.model_selection import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
-from imblearn.over_sampling import RandomOverSampler
+#from imblearn.over_sampling import RandomOverSampler
 
-from conf_analysis.behavior import metadata
-from conf_analysis.meg import preprocessing
+#from conf_analysis.behavior import metadata
+#from conf_analysis.meg import preprocessing
 
-from imblearn.pipeline import Pipeline
+#from imblearn.pipeline import Pipeline
 from sklearn.metrics.scorer import make_scorer
 from sklearn.metrics import roc_auc_score, mean_squared_error
 from sklearn.utils.multiclass import type_of_target
@@ -45,8 +45,8 @@ from pymeg.lcmv import complex_tfr, tfr2power_estimator
 njobs = 1
 
 
-def get_lcmv(tfr_params, epochs, filters, njobs=njobs):    
-    times = epochs[0].times    
+def get_lcmv(tfr_params, epochs, filters, njobs=njobs):
+    times = epochs[0].times
     return multi_apply_lcmv(epochs, times, filters, tfr_params)
 
 
@@ -56,11 +56,11 @@ class Decoder(object):
 
         Args:
             classifier: (name, Sklearn classifier object)
-                A tuple that contains a name at first position and a 
+                A tuple that contains a name at first position and a
                 sklearn classifier at second position.
             target: pandas Series
                 This Series needs to be indexed by trial numbers
-                that are also given to lcmv.py for source 
+                that are also given to lcmv.py for source
                 reconstruction.
 
         """
@@ -76,7 +76,7 @@ class Decoder(object):
     def __call__(self, *args, **kwargs):
         return self.classify(*args, **kwargs)
 
-    def classify(self, data, time, freq, trial, roi, 
+    def classify(self, data, time, freq, trial, roi,
         average_vertices=False, use_phase=True):
         """Perform decoding on source reconstructed data.
 
@@ -84,51 +84,53 @@ class Decoder(object):
 
         Args:
             data: ndarray
-                4d: ntrials x freq x vertices x time                                 
+                4d: ntrials x freq x vertices x time
             time: ndarray
-                time points that match last dimension of data            
+                time points that match last dimension of data
             freq: value
-                estimation value for this set of data            
+                estimation value for this set of data
             trial: ndarray
                 Needs to match first dim of data
             roi: str
                 Name of the roi that this comes from
             average_vertices: False or int
                 Average vertices per hemisphere?
-                If not false must be index 
-                array to indicate which vertices belong 
+                If not false must be index
+                array to indicate which vertices belong
                 to which hemisphere.
             use_phase: bool
                 Include phase as feature?
         Returns:
             A pandas DataFrame that contains decoding accuracies
         """
-        n_trials = data.shape[0]  
-        # This can be moved into the loop to save memory?                           
+        n_trials = data.shape[0]
+        # This can be moved into the loop to save memory?
 
-        target_vals = self.target.loc[trial]
+        target_vals = self.target    # PM: original was target.loc[trial]
         idnan = np.isnan(target_vals)
         scores = []
+        
+        average_vertices = np.array(average_vertices,ndmin=1)  # PM: ensures average_vertices is 1d array even if set to default of False
 
         for idx_t, tp in enumerate(time):
             if use_phase:
                 d = data[:, :, :, idx_t].copy()
                 phase = np.angle(d)
                 del d
-                if average_vertices:
-                    
+                if average_vertices.any()==True:
+
                     phase = np.stack(
                             (phase[:, :, average_vertices].mean(2),
                              phase[:, :, ~average_vertices].mean(2)),
                             2
-                        )                                    
+                        )
             power = ((data[:, :, :, idx_t] * data[:, :, :, idx_t].conj()).real)
-            if average_vertices:                        
+            if average_vertices.any()==True:
                 power = np.stack(
                             (power[:, :, average_vertices].mean(2),
                              power[:, :, ~average_vertices].mean(2)),
                             2
-                        )   
+                        )
             # Build prediction matrix:
             if use_phase:
                 X = np.hstack(
@@ -148,35 +150,28 @@ class Decoder(object):
                        ("Scaling", StandardScaler()),
                        ("PCA", PCA(n_components=0.95, svd_solver='full')),
                        ("Upsampler", RandomOverSampler(sampling_strategy="minority")),
-                       ("FeatureSelection", SelectFromModel(svm.LinearSVC(C=C, penalty="l1", dual=False, max_iter=50000))),                       
-                       ("SVClin", svm.LinearSVC(max_iter=5000, dual=False, penalty="l2", C=1/2)),                   
+                       ("FeatureSelection", SelectFromModel(svm.LinearSVC(C=C, penalty="l1", dual=False, max_iter=50000))),
+                       ("SVClin", svm.LinearSVC(max_iter=5000, dual=False, penalty="l2", C=1/2)),
                     ]
                 )
             else:
                 clf = self.clf
-            s = categorize(clf, target_vals[~idnan], X[~idnan, :])                
+            s = categorize(clf, target_vals[~idnan], X[~idnan, :])
             s["latency"] = tp
             s["roi"] = roi
             scores.append(s)
         return pd.DataFrame(scores)
 
 
-def categorize(clf, target, data, njobs=6):
+def categorize(clf, target, data, njobs=1):
     """
     Expects a pandas series and a pandas data frame.
     Both need to be indexed with the same index.
     """
-    from imblearn.pipeline import Pipeline
-    from sklearn.metrics.scorer import make_scorer
-    from sklearn.metrics import recall_score, precision_score
-    from sklearn.utils.multiclass import type_of_target
+    from sklearn.metrics import make_scorer
 
-    # Determine prediction target:
-    y_type = type_of_target(target)
-    if y_type == "multiclass":
-        metrics = {"roc_auc": make_scorer(multiclass_roc, average="weighted")}
-    else:
-        metrics = ["roc_auc"]
+    corr_scorer = make_scorer(lambda x, y: np.corrcoef(x, y)[0, 1])
+    metrics = {"correlation":corr_scorer}
 
     score = cross_validate(
         clf, data, target, cv=10, scoring=metrics, return_train_score=False, n_jobs=njobs
@@ -193,7 +188,7 @@ def multi_apply_lcmv(tfrdata, times, filters, tfr_params, max_ori_out="signed"):
     """Apply Linearly Constrained Minimum Variance (LCMV) beamformer weights.
 
 
-    Args:    
+    Args:
         tfrdata: list of ndarray
             Data to be reconstructed. Each element in this list is one set
             of epochs, which will be reconstructed by the corresponding
@@ -216,7 +211,7 @@ def multi_apply_lcmv(tfrdata, times, filters, tfr_params, max_ori_out="signed"):
             One element per element of tfrdata
         filters: list of filter dicts
             List of filter dicts, one for each element in tfrdata
-        
+
 
     Returns:
         ndarray of source reconstructed epochs, events, times, est_vals

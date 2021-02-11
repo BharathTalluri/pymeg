@@ -31,7 +31,6 @@ def check_bems(subjects):
 @memory.cache
 def get_source_space(subject, sdir=None):
     """Return source space.
-
     Mainly a helper function to provide caching of source space
     computation.
     """
@@ -45,14 +44,12 @@ def get_source_space(subject, sdir=None):
 @memory.cache
 def get_info(raw_filename, epochs_filename):
     """Return an info dict for a set of epochs.
-
     Args:
         raw_filename : string
             Path of raw data that was the basis for creating
             the epochs.
         epochs_filename: string
             Epochs file name.
-
     Returns:
         MNE Infor structure.
     """
@@ -63,12 +60,11 @@ def get_info(raw_filename, epochs_filename):
 
 @memory.cache
 def get_leadfield(subject, raw_filename, epochs_filename, trans_filename,
-                  conductivity=(0.3, 0.006, 0.3), njobs=4, 
-                  bem_sub_path='bem', 
+                  conductivity=(0.3, 0.006, 0.3), njobs=4,
+                  bem_sub_path='bem',
                   sdir=None):
     """Compute leadfield with presets for this subject
-
-    Args:    
+    Args:
         subject : str
             Name of freesurfer subject
         raw_filename : str
@@ -86,8 +82,7 @@ def get_leadfield(subject, raw_filename, epochs_filename, trans_filename,
         bem_sub_path: str
             Sub-path of freesurfer subject path where to read bem
             surfaces from
-
-    Returns:   
+    Returns:
         Tuple of (forward model, BEM model, source space)
     """
     if sdir is None:
@@ -117,7 +112,6 @@ def get_leadfield(subject, raw_filename, epochs_filename, trans_filename,
 def make_bem_model(subject, ico=4, conductivity=(0.3, 0.006, 0.3),
                    subjects_dir=None, verbose=None, bem_sub_path='bem'):
     """Create a BEM model for a subject.
-
     Copied from MNE python, adapted to read surface from fieldtrip / spm
     segmentation.
     """
@@ -148,11 +142,9 @@ def make_bem_model(subject, ico=4, conductivity=(0.3, 0.006, 0.3),
 def get_labels(subject, filters=['*wang2015atlas*', '*JWDG.lr*'],
                annotations=['HCPMMP1'], sdir=None):
     """Read ROI labels from annotations and label files.
-
     This defines the ROIs that can be used for source reconstruction.
-    ROIs originate from either freesurfer annotation files or label 
-    files. 
-
+    ROIs originate from either freesurfer annotation files or label
+    files.
     Args:
         subject: str
             Name of freesurfer subject
@@ -164,7 +156,6 @@ def get_labels(subject, filters=['*wang2015atlas*', '*JWDG.lr*'],
             Name of annotation files to load
         sdir: str, default None
             Overwrites freesurfer subject dir.
-
     Returns:
         List of MNE label objects.
     """
@@ -247,9 +238,8 @@ Transformation matrix MEG<>T1 space.
 @memory.cache
 def get_head_correct_info(raw_filename, epoch_filename, N=-1):
     """Get transformation matrix, fiducial positions and infor structure.
-
-    The returned info structure contains fiducial locations computed from 
-    the epoch data. 
+    The returned info structure contains fiducial locations computed from
+    the epoch data.
     """
     trans = get_ctf_trans(raw_filename)
     fiducials = get_ref_head_pos(epoch_filename, trans, N=N)
@@ -276,7 +266,6 @@ def get_trans_epoch(raw_filename, epoch_filename):
 
 def make_trans(subject, raw_filename, epoch_filename, trans_name, sdir=None, fid_epochs=None):
     """Create coregistration between MRI and MEG space.
-
     Call MNE gui to create a MEG<>MRI transformation matrix
     """
     import os
@@ -302,7 +291,6 @@ def make_trans(subject, raw_filename, epoch_filename, trans_name, sdir=None, fid
 @memory.cache
 def get_ref_head_pos(filename,  trans, N=-1):
     """Compute average head position from epochs.
-
     Args:
         filename: str
             Epochs file to load
@@ -328,12 +316,10 @@ def get_ref_head_pos(filename,  trans, N=-1):
 
 def replace_fiducials(info, fiducials):
     """Replace initial fiducial measuremnt with new estimates
-
     CTF systems measure fiducial location at the beginning of the measurement.
     When used with online head loc over multiple sessions these measurements
     are not accurate. This is because subjects are guided to the head position
     of previous sessions.
-
     Args:
         info: MNE info structure
         fiducials: dict
@@ -360,7 +346,6 @@ def replace_fiducials(info, fiducials):
 
 def head_movement(epochs):
     """Compute head movement from epochs.
-
     Returns the circumcenter of the three fiducials for each time point.
     """
     ch_names = np.array(epochs.ch_names)
@@ -442,11 +427,10 @@ def get_ctf_trans(filename):
 
 def circumcenter(coil1, coil2, coil3):
     """Determines position and orientation of the circumcenter of fiducials.
-    Adapted from:    
+    Adapted from:
     http://www.fieldtriptoolbox.org/example/how_to_incorporate_head_movements_in_meg_analysis
     CIRCUMCENTER determines the position and orientation of the circumcenter
     of the three fiducial markers (MEG headposition coils).
-
     Args:
         coil1-3: 3xN array
             X,y,z-coordinates of the 3 coils [3 X N],[3 X N],[3 X N] where N
