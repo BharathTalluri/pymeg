@@ -24,8 +24,8 @@ def set_n_threads(n):
     os.environ['OMP_NUM_THREADS'] = str(n)
 
 
-subjects = {'Pilot03': [(1, 1), (2, 1), (3, 1), (4, 1)],
-            'Pilot06': [(2, 2), (3, 1), (4, 1)]}
+subjects = {'Pilot04': [(1, 1), (2, 1), (3, 2), (4, 1)]}
+#            'Pilot06': [(2, 2), (3, 1), (4, 1)]}
 #            'Pilot04': [(1, 1), (2, 1), (3, 2), (4, 1)],
 #            'Pilot06': [(2, 2), (3, 1), (4, 1)]}
 
@@ -86,13 +86,15 @@ def lcmvfilename(subject, session, signal, recording, chunk=None):
     return join(path, filename)
 
 
-def get_stim_epoch(subject, session, recording):
+def get_stim_epoch(subject, session, recording, hipass=None, lopass=None):
     from pymeg import preprocessing as pymegprepr
     globstring = '/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/%s-%i_0%i_*fif.gz' % (subject, session, recording)
     filenames = glob(globstring)[0]
     epochs = mne.read_epochs(filenames)
     # epochs.times = epochs.times - 1  # PM: this was somehow necessary for initial pipeline, but *NOT* for induced
     epochs = epochs.pick_channels([x for x in epochs.ch_names if x.startswith('M')])
+    if (hipass is not None) or (lopass is not None):  # filter epoched data if desired
+        epochs = epochs.filter(hipass, lopass)
     id_time = (-0.25 <= epochs.times) & (epochs.times <= 0)
     means = epochs._data[:, :, id_time].mean(-1)
     epochs._data -= means[:, :, np.newaxis]
@@ -123,9 +125,13 @@ def extract(subject, session, recording, signal_type='BB', BEM='three_layer', de
     logging.info('Setting up source space and forward model')
 
     conductivity = (0.3, 0.006, 0.3)  # otherwise, use the default settings
+    if subject == 'Pilot04':
+        forward, bem, source = pymegsr.get_leadfield('fsaverage', raw_filename, epochs_filename, trans_filename, bem_sub_path='bem_ft', conductivity=conductivity)
+        labels = pymegsr.get_labels('fsaverage')
+    else:
+        forward, bem, source = pymegsr.get_leadfield(subject, raw_filename, epochs_filename, trans_filename, bem_sub_path='bem_ft', conductivity=conductivity)
+        labels = pymegsr.get_labels(subject)
 
-    forward, bem, source = pymegsr.get_leadfield(subject, raw_filename, epochs_filename, trans_filename, bem_sub_path='bem_ft', conductivity=conductivity)
-    labels = pymegsr.get_labels(subject)
 
     labels = pymegsr.labels_exclude(labels,
                                     exclude_filters=['wang2015atlas.IPS4',

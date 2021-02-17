@@ -11,7 +11,7 @@ from glob import glob
 
 from pymeg import lcmv as pymeglcmv
 from pymeg import source_reconstruction as pymegsr
-from pymeg import decoding
+from pymeg import decoding_ERF
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -46,7 +46,6 @@ subjects_choice = {'Pilot03': [(3, 1), (4, 1)],
                    'Pilot04': [(3, 2), (4, 1)],
                    'Pilot06': [(3, 1), (4, 1)]}
 conditions = ['all', 'attn', 'choice']
-conditions = ['all', 'attn', 'choice']
 
 # typical processing demands (in # cores) per subject
 mem_demand = {'Pilot03': 5, 'Pilot04': 5, 'Pilot06': 5}
@@ -58,25 +57,25 @@ mem_area = {'vfcPrimary': 3650, 'vfcEarly': 9610, 'vfcV3ab': 3280,
 
 # Mapping areas to labels
 areas_to_labels = {
-    # "vfcPrimary": [
-    #     u"lh.wang2015atlas.V1d-lh", u"rh.wang2015atlas.V1d-rh",
-    #     u"lh.wang2015atlas.V1v-lh", u"rh.wang2015atlas.V1v-rh",
-    # ],
-    # "vfcEarly": [
-    #     u"lh.wang2015atlas.V2d-lh", u"rh.wang2015atlas.V2d-rh",
-    #     u"lh.wang2015atlas.V2v-lh", u"rh.wang2015atlas.V2v-rh",
-    #     u"lh.wang2015atlas.V3d-lh", u"rh.wang2015atlas.V3d-rh",
-    #     u"lh.wang2015atlas.V3v-lh", u"rh.wang2015atlas.V3v-rh",
-    #     u"lh.wang2015atlas.hV4-lh", u"rh.wang2015atlas.hV4-rh",
-    # ],
+    "vfcPrimary": [
+        u"lh.wang2015atlas.V1d-lh", u"rh.wang2015atlas.V1d-rh",
+        u"lh.wang2015atlas.V1v-lh", u"rh.wang2015atlas.V1v-rh",
+    ],
+    "vfcEarly": [
+        u"lh.wang2015atlas.V2d-lh", u"rh.wang2015atlas.V2d-rh",
+        u"lh.wang2015atlas.V2v-lh", u"rh.wang2015atlas.V2v-rh",
+        u"lh.wang2015atlas.V3d-lh", u"rh.wang2015atlas.V3d-rh",
+        u"lh.wang2015atlas.V3v-lh", u"rh.wang2015atlas.V3v-rh",
+        u"lh.wang2015atlas.hV4-lh", u"rh.wang2015atlas.hV4-rh",
+    ],
     "vfcVO": [
         u"lh.wang2015atlas.VO1-lh", u"rh.wang2015atlas.VO1-rh",
         u"lh.wang2015atlas.VO2-lh", u"rh.wang2015atlas.VO2-rh",
     ],
-    # "vfcPHC": [
-    #     u"lh.wang2015atlas.PHC1-lh", u"rh.wang2015atlas.PHC1-rh",
-    #     u"lh.wang2015atlas.PHC2-lh", u"rh.wang2015atlas.PHC2-rh",
-    # ],
+    "vfcPHC": [
+        u"lh.wang2015atlas.PHC1-lh", u"rh.wang2015atlas.PHC1-rh",
+        u"lh.wang2015atlas.PHC2-lh", u"rh.wang2015atlas.PHC2-rh",
+    ],
     "vfcV3ab": [
         u"lh.wang2015atlas.V3A-lh", u"rh.wang2015atlas.V3A-rh",
         u"lh.wang2015atlas.V3B-lh", u"rh.wang2015atlas.V3B-rh",
@@ -89,14 +88,14 @@ areas_to_labels = {
         u"lh.wang2015atlas.LO1-lh", u"rh.wang2015atlas.LO1-rh",
         u"lh.wang2015atlas.LO2-lh", u"rh.wang2015atlas.LO2-rh",
     ],
-    # "vfcIPS01": [
-    #     u"lh.wang2015atlas.IPS0-lh", u"rh.wang2015atlas.IPS0-rh",
-    #     u"lh.wang2015atlas.IPS1-lh", u"rh.wang2015atlas.IPS1-rh",
-    # ],
-    # "vfcIPS23": [
-    #     u"lh.wang2015atlas.IPS2-lh", u"rh.wang2015atlas.IPS2-rh",
-    #     u"lh.wang2015atlas.IPS3-lh", u"rh.wang2015atlas.IPS3-rh",
-    # ],
+    "vfcIPS01": [
+        u"lh.wang2015atlas.IPS0-lh", u"rh.wang2015atlas.IPS0-rh",
+        u"lh.wang2015atlas.IPS1-lh", u"rh.wang2015atlas.IPS1-rh",
+    ],
+    "vfcIPS23": [
+        u"lh.wang2015atlas.IPS2-lh", u"rh.wang2015atlas.IPS2-rh",
+        u"lh.wang2015atlas.IPS3-lh", u"rh.wang2015atlas.IPS3-rh",
+    ],
     # "JWG_aIPS": ["lh.JWDG.lr_aIPS1-lh", "rh.JWDG.lr_aIPS1-rh", ],
     # "JWG_IPS_PCeS": ["lh.JWDG.lr_IPS_PCes-lh", "rh.JWDG.lr_IPS_PCes-rh", ],
     # "JWG_M1": ["lh.JWDG.lr_M1-lh", "rh.JWDG.lr_M1-rh", ],
@@ -113,14 +112,14 @@ def submit_allCond(only_glasser=False):
         for subject in subjects.keys():
             print("Submitting %s -> %s" % (subject, area))
             parallel.pmap(
-                decode_consistency,
+                decode,
                 [(subject, area, subjects[subject], 0)],  # added session/recording info as input
-                walltime="200:00:00",
-                memory=mem_demand[subject] * 10 + 10,
+                walltime="80:00:00",
+                memory=mem_demand[subject] * 10 - 10,
                 nodes=1,
-                tasks=mem_demand[subject] + 1,
+                tasks=mem_demand[subject] - 1,
                 env="py36",
-                name="decode_" + area + subject,
+                name="decode_erf_" + area + subject,
             )
             time.sleep(1)
 
@@ -133,14 +132,14 @@ def submit_attn(only_glasser=False):
         for subject in subjects_attn.keys():
             print("Submitting %s -> %s" % (subject, area))
             parallel.pmap(
-                decode_consistency,
+                decode,
                 [(subject, area, subjects_attn[subject], 1)],  # added session/recording info as input
                 walltime="200:00:00",
-                memory=mem_demand[subject] * 10 + 10,
+                memory=mem_demand[subject] * 10 - 10,
                 nodes=1,
-                tasks=mem_demand[subject] + 1,
+                tasks=mem_demand[subject] - 1,
                 env="py36",
-                name="decode_" + area + subject,
+                name="decode_erf_" + area + subject,
             )
             time.sleep(1)
 
@@ -153,14 +152,14 @@ def submit_choice(only_glasser=False):
         for subject in subjects_choice.keys():
             print("Submitting %s -> %s" % (subject, area))
             parallel.pmap(
-                decode_consistency,
+                decode,
                 [(subject, area, subjects_choice[subject], 2)],  # added session/recording info as input
                 walltime="200:00:00",
-                memory=mem_demand[subject] * 10 + 10,
+                memory=mem_demand[subject] * 10 - 10,
                 nodes=1,
-                tasks=mem_demand[subject] + 1,
+                tasks=mem_demand[subject] - 1,
                 env="py36",
-                name="decode_" + area + subject,
+                name="decode_erf_" + area + subject,
             )
             time.sleep(1)
 
@@ -230,9 +229,10 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
     bems = []
     sources = []
     sessions = []
+    low_pass_fs = None   # low-pass filter cutoff; set to None is no filter required
     for sess, rec in sessinfo:
         logging.info("Reading data for %s, sess %i, rec %i " % (subject, sess, rec))
-        data_cov, epoch, epoch_filename = get_stim_epoch(subject, sess, rec)
+        data_cov, epoch, epoch_filename = get_stim_epoch(subject, sess, rec, lopass=low_pass_fs)
         data.append((data_cov, epoch))  # N.B. data may in fact need to be output currently called 'epochs'
 
         logging.info("Setting up source space and forward model")
@@ -254,33 +254,7 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
         # bems.append(bem)
         # sources.append(source)
 
-    # Define TFR parameters
-    fois = np.arange(35, 101, 5)   # PM: np.arange(36, 162, 4)
-    # lfois = np.hstack([np.arange(1, 11, 1),np.arange(12, 31, 2)])    # PM: np.arange(1, 36, 1)
-    lfois = np.hstack([np.arange(1, 11, 1), np.arange(12, 31, 2)])   # NB: THIS SETTING EXCLUDES 7-15 Hz!!!!
-    tfr_params = {
-        "HF": {               # PM changed from 'F' to 'HF'
-            "foi": fois,
-            "cycles": fois * 0.25,  # PM: fois * 0.25
-            "time_bandwidth": 6 + 1,   # PM: 6 + 1
-            "n_jobs": 1,
-            "est_val": fois,
-            "est_key": "HF",   # PM changed from 'F' to 'HF'
-            "sf": 400,         # PM added
-            "decim": 20,       # PM added
-        },
-        "LF": {
-            "foi": lfois,
-            "cycles": lfois * 0.4,  # PM: fois * 0.4
-            "time_bandwidth": 1 + 1,     # PM: 1 + 1
-            "n_jobs": 1,
-            "est_val": lfois,
-            "est_key": "LF",
-            "sf": 400,         # PM added
-            "decim": 20,       # PM added
-        },
-    }
-
+    # pull trial IDs
     events = [d[1].events[:, 2] for d in data]
     events = np.hstack(events)
 
@@ -290,23 +264,20 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
         filters.append(pymeglcmv.setup_filters(epochs.info, forward, data_cov, None, [label]))
     set_n_threads(1)
 
-    # Specify vertex -> hemisphere mapping array --- COMMENT IN IF WANT TO AVERAGE ACROSS VERTICES
-    f = filters[0][label.name]
-    avg_vertices = np.zeros((len(f['vertices'][0]) + len(f['vertices'][1]))).astype(bool)
-    avg_vertices[:len(f['vertices'][0])] = True
-
     # specify decoding settings
     clf = Pipeline(
         [
             ("Scaling", StandardScaler()),
             ("PCA", PCA(n_components=0.95, svd_solver='full')),
-            ("RidgeReg", linear_model.Ridge(alpha=1)),
+            ("RidgeReg", linear_model.Ridge(alpha=10)),
         ]
     )
 
     # specify sample onsets and window for decoding
     smpon = np.array([0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 2.45, 2.60, 2.75, 2.90, 3.05, 3.20])   # vector of sample onsets (s)
     smpwin = [-0.10001, 1.00001]   # window for decoding, relative to sample onset (s) - going marginally outside desired bnds important to catch all times
+    basewin = [-0.050, 0]   # window relative to sample onset for sample-specific baseline (set to None if not required)
+    subsmp = 200    # frequency (Hz) at which to subsample (set to None if no subsampling required - original fs = 400 Hz); NB: should be factor of 400
 
     # load to-be-decoded variables & check that trials are appropiately aligned
     matname = ('/home/btalluri/confirmation_spatial/data/meg/analysis/preprocessed4mne/BehavPupil/%s_4decode.mat' % (subject))
@@ -321,26 +292,27 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
     # Iterates over sample positions to mitigate memory demands
     all_smp = []  # inialize DataFrame containing all decoding results, across sample positions/variables
     for smp in range(len(smpon)):
-        fname = "/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeAv_nophase/%s_%s_%s_cond-%s_avTF.hdf" % (subject, area, str(smp + 1), condition)
+        fname = "/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeERF_nofilt/%s_%s_%s_cond-%s_finegrainERF.hdf" % (subject, area, str(smp + 1), condition)
         # the try: except: block implements caching, if output is already there, don't do it again.
         try:
             all_s = pd.read_hdf(fname)
         except FileNotFoundError:
-            # perform source reconstruction of TF data
-            HF_tfrdata, events, HF_freq, times = decoding.get_lcmv(   # BCT: removed the padding added by PM: padding by 0.2s (max TF win / 2) for accurate TF estimation
-                tfr_params["HF"], [d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6    # d[1].copy().crop() pulls out sample-aligned data
-            )
-            LF_tfrdata, events, LF_freq, times = decoding.get_lcmv(
-                tfr_params["LF"], [d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6
-            )
+            # perform source reconstruction of ERF data
+            erfdata, events, times = decoding_ERF.get_lcmv([d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6)    # erfdata is ntrials*nvertices*ntimes
+            times = times - smpon[smp]  # making times vector relative to sample onset
 
-            # Concatenate data
-            tfrdata = np.hstack([HF_tfrdata, LF_tfrdata])
-            del LF_tfrdata, HF_tfrdata
-            freq = np.concatenate([HF_freq, LF_freq])
+            # sample-specific baseline subtraction
+            if basewin is not None:
+                id_time = (basewin[0] <= times) & (times <= basewin[1])
+                means = erfdata[:, :, id_time].mean(-1)
+                erfdata -= means[:, :, np.newaxis]
+
+            # subsample
+            if subsmp is not None:
+                erfdata = erfdata[:, :, 0::round(400 / subsmp)]
+                times = times[0::round(400 / subsmp)]
 
             # loop through variables to be decoded
-            ctimes = (smpwin[0] + smpon[smp] <= times) & (times <= smpwin[1] + smpon[smp])  # indices of time-points without padding
             all_s = []
             for hemi in [0, 180]:
                 hemi_vals = mat["ref_angles"]
@@ -351,12 +323,13 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
                     target_vals = mat[target]   # target_vals will be a numpy ndarray, ntrials*nsamples
                     sess_targets = target_vals[sess_idx, :]
                     # perform decoding
-                    dcd = decoding.Decoder(sess_targets[hemi_idx, smp], ("RidgeReg", clf))
-                    hemi_tfrdata = tfrdata[hemi_idx, :, :, :]
+                    dcd = decoding_ERF.Decoder(sess_targets[hemi_idx, smp], ("RidgeReg", clf))
+                    # erfdata is ntrials*nvertices*ntimes
+                    hemi_erfdata = erfdata[hemi_idx, :, :]
                     hemi_events = events[hemi_idx]
                     k = dcd.classify(
-                        hemi_tfrdata[:, :, :, ctimes], times[ctimes] - smpon[smp], freq, hemi_events, area,   # feeding in times aligned to smp onset
-                        average_vertices=avg_vertices, use_phase=False            # PM: NB, set average_vertices to False if want to preserve vertices as separate features
+                        hemi_erfdata, times, hemi_events, area,   # feeding in times aligned to smp onset
+                        average_vertices=False                    # NB, set average_vertices to False if want to preserve vertices as separate features
                     )
                     k.loc[:, "target"] = target  # include target_val label in dataframe
                     k.loc[:, "hemi"] = hemi  # include the hemifield information
@@ -370,7 +343,7 @@ def decode(subject, area, sessinfo, condition_idx, epoch_type="stimulus", only_g
         all_smp.append(all_s)  # append decoding results for this sample position
 
     all_smp = pd.concat(all_smp)  # concatenate all sample positions
-    all_smp.to_csv("/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeAv_nophase/%s_%s_con-%s_allSmp_avTF.csv" % (subject, area, condition))
+    all_smp.to_csv("/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeERF_nofilt/%s_%s_allSmp_cond-%s_finegrainERF.csv" % (subject, area, condition))
 
     return all_smp
 
@@ -409,9 +382,10 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
     bems = []
     sources = []
     sessions = []
+    low_pass_fs = None   # low-pass filter cutoff; set to None is no filter required
     for sess, rec in sessinfo:
         logging.info("Reading data for %s, sess %i, rec %i " % (subject, sess, rec))
-        data_cov, epoch, epoch_filename = get_stim_epoch(subject, sess, rec)
+        data_cov, epoch, epoch_filename = get_stim_epoch(subject, sess, rec, lopass=low_pass_fs)
         data.append((data_cov, epoch))  # N.B. data may in fact need to be output currently called 'epochs'
 
         logging.info("Setting up source space and forward model")
@@ -433,33 +407,7 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
         # bems.append(bem)
         # sources.append(source)
 
-    # Define TFR parameters
-    fois = np.arange(35, 101, 5)   # PM: np.arange(36, 162, 4)
-    # lfois = np.hstack([np.arange(1, 11, 1),np.arange(12, 31, 2)])    # PM: np.arange(1, 36, 1)
-    lfois = np.hstack([np.arange(1, 11, 1), np.arange(12, 31, 2)])   # NB: THIS SETTING EXCLUDES 7-15 Hz!!!!
-    tfr_params = {
-        "HF": {               # PM changed from 'F' to 'HF'
-            "foi": fois,
-            "cycles": fois * 0.25,  # PM: fois * 0.25
-            "time_bandwidth": 6 + 1,   # PM: 6 + 1
-            "n_jobs": 1,
-            "est_val": fois,
-            "est_key": "HF",   # PM changed from 'F' to 'HF'
-            "sf": 400,         # PM added
-            "decim": 20,       # PM added
-        },
-        "LF": {
-            "foi": lfois,
-            "cycles": lfois * 0.4,  # PM: fois * 0.4
-            "time_bandwidth": 1 + 1,     # PM: 1 + 1
-            "n_jobs": 1,
-            "est_val": lfois,
-            "est_key": "LF",
-            "sf": 400,         # PM added
-            "decim": 20,       # PM added
-        },
-    }
-
+    # pull trial IDs
     events = [d[1].events[:, 2] for d in data]
     events = np.hstack(events)
 
@@ -469,23 +417,20 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
         filters.append(pymeglcmv.setup_filters(epochs.info, forward, data_cov, None, [label]))
     set_n_threads(1)
 
-    # Specify vertex -> hemisphere mapping array --- COMMENT IN IF WANT TO AVERAGE ACROSS VERTICES
-    f = filters[0][label.name]
-    avg_vertices = np.zeros((len(f['vertices'][0]) + len(f['vertices'][1]))).astype(bool)
-    avg_vertices[:len(f['vertices'][0])] = True
-
     # specify decoding settings
     clf = Pipeline(
         [
             ("Scaling", StandardScaler()),
             ("PCA", PCA(n_components=0.95, svd_solver='full')),
-            ("RidgeReg", linear_model.Ridge(alpha=1)),
+            ("RidgeReg", linear_model.Ridge(alpha=10)),
         ]
     )
 
     # specify sample onsets and window for decoding
     smpon = np.array([2.45, 2.60, 2.75, 2.90, 3.05, 3.20])   # vector of sample onsets (s)
     smpwin = [-0.10001, 1.00001]   # window for decoding, relative to sample onset (s) - going marginally outside desired bnds important to catch all times
+    basewin = [-0.050, 0]   # window relative to sample onset for sample-specific baseline (set to None if not required)
+    subsmp = 200    # frequency (Hz) at which to subsample (set to None if no subsampling required - original fs = 400 Hz); NB: should be factor of 400
 
     # load to-be-decoded variables & check that trials are appropiately aligned
     matname = ('/home/btalluri/confirmation_spatial/data/meg/analysis/preprocessed4mne/BehavPupil/%s_4decode.mat' % (subject))
@@ -495,31 +440,32 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
         sess_idx.append(np.where(mat['sess'] == sess)[0])
     sess_idx = np.concatenate(sess_idx)
     mat_events = np.int64(np.concatenate(mat["tIDs"]))  # convert matlab events to same type as python events
-    assert np.array_equal(events, mat_events[sess_idx])    # PM: remove [:len(events)] after testing single session
+    assert np.array_equal(events, mat_events[sess_idx])
     # Perform source reconstruction, using for each session the appropriate filter
     # Iterates over sample positions to mitigate memory demands
     all_smp = []  # inialize DataFrame containing all decoding results, across sample positions/variables
     for smp in range(len(smpon)):
-        fname = "/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeAv_nophase/%s_%s_%s_cond-%s_consistency_avTF.hdf" % (subject, area, str(smp + 1), condition)
+        fname = "/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeERF_nofilt/%s_%s_%s_consistency_cond-%s_finegrainERF.hdf" % (subject, area, str(smp + 1), condition)
         # the try: except: block implements caching, if output is already there, don't do it again.
         try:
             all_s = pd.read_hdf(fname)
         except FileNotFoundError:
-            # perform source reconstruction of TF data
-            HF_tfrdata, events, HF_freq, times = decoding.get_lcmv(   # BCT: removed the padding added by PM: padding by 0.2s (max TF win / 2) for accurate TF estimation
-                tfr_params["HF"], [d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6    # d[1].copy().crop() pulls out sample-aligned data
-            )
-            LF_tfrdata, events, LF_freq, times = decoding.get_lcmv(
-                tfr_params["LF"], [d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6
-            )
+            # perform source reconstruction of ERF data
+            erfdata, events, times = decoding_ERF.get_lcmv([d[1].copy().crop(smpon[smp] + smpwin[0], smpon[smp] + smpwin[1]) for d in data], filters, njobs=6)    # erfdata is ntrials*nvertices*ntimes
+            times = times - smpon[smp]  # making times vector relative to sample onset
 
-            # Concatenate data
-            tfrdata = np.hstack([HF_tfrdata, LF_tfrdata])
-            del LF_tfrdata, HF_tfrdata
-            freq = np.concatenate([HF_freq, LF_freq])
+            # sample-specific baseline subtraction
+            if basewin is not None:
+                id_time = (basewin[0] <= times) & (times <= basewin[1])
+                means = erfdata[:, :, id_time].mean(-1)
+                erfdata -= means[:, :, np.newaxis]
+
+            # subsample
+            if subsmp is not None:
+                erfdata = erfdata[:, :, 0::round(400 / subsmp)]
+                times = times[0::round(400 / subsmp)]
 
             # loop through variables to be decoded
-            ctimes = (smpwin[0] + smpon[smp] <= times) & (times <= smpwin[1] + smpon[smp])  # indices of time-points without padding
             all_s = []
             for hemi in [0, 180]:
                 hemi_vals = mat["ref_angles"]
@@ -534,12 +480,13 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
                     # get trial indices for decoding
                     decoding_trial_idx = np.intersect1d(hemi_idx, valid_target_idx)
                     # perform decoding
-                    dcd = decoding.Decoder(sess_targets[decoding_trial_idx, smp + 6], ("RidgeReg", clf))
-                    hemi_tfrdata = tfrdata[decoding_trial_idx, :, :, :]
+                    dcd = decoding_ERF.Decoder(sess_targets[decoding_trial_idx, smp + 6], ("RidgeReg", clf))
+                    # erfdata is ntrials*nvertices*ntimes
+                    hemi_erfdata = erfdata[decoding_trial_idx, :, :]
                     hemi_events = events[decoding_trial_idx]
                     k = dcd.classify(
-                        hemi_tfrdata[:, :, :, ctimes], times[ctimes] - smpon[smp], freq, hemi_events, area,   # feeding in times aligned to smp onset
-                        average_vertices=avg_vertices, use_phase=False            # PM: NB, set average_vertices to False if want to preserve vertices as separate features
+                        hemi_erfdata, times, hemi_events, area,   # feeding in times aligned to smp onset
+                        average_vertices=False                    # NB, set average_vertices to False if want to preserve vertices as separate features
                     )
                     k.loc[:, "target"] = target  # include target_val label in dataframe
                     k.loc[:, "hemi"] = hemi  # include the hemifield information
@@ -553,7 +500,7 @@ def decode_consistency(subject, area, sessinfo, condition_idx, epoch_type="stimu
         all_smp.append(all_s)  # append decoding results for this sample position
 
     all_smp = pd.concat(all_smp)  # concatenate all sample positions
-    all_smp.to_csv("/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeAv_nophase/%s_%s_con-%s_allSmp_consistency_avTF.csv" % (subject, area, condition))
+    all_smp.to_csv("/home/btalluri/confirmation_spatial/data/meg/analysis/conv2mne/decodeERF_nofilt/%s_%s_allSmp_consistency_cond-%s_finegrainERF.csv" % (subject, area, condition))
 
     return all_smp
 

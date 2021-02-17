@@ -1,15 +1,15 @@
 
-subjects = {'Pilot03': 4,
-            'Pilot06': 4}
+subjects = {'Pilot04': 4}
+#            'Pilot06': 4}
 
 
 def submit_aggregates(cluster='uke'):
     from pymeg import parallel
     for subject, final_sess in subjects.items():
-        if subject == 'Pilot03':
-            first_sess = 1
         if subject == 'Pilot06':
             first_sess = 2
+        else:
+            first_sess = 1
         for sessnum in range(first_sess, final_sess + 1):
             for datatype in ['F']:  # for datatype in ['F','BB']:
                 parallel.pmap(aggregate, [(subject, sessnum, datatype)],
